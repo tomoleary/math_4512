@@ -1,4 +1,4 @@
-# Math 4512
+# Ohio State Math 4512
 
 ## Extra Credit
 
