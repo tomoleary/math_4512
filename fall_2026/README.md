@@ -14,7 +14,7 @@ If you are new to Python, begin with `python_primer.ipynb`. Then open
 The starter gives you a complete D-D computation, including mode overlays,
 eigenvalue comparisons, and a refinement study. Your computational work is to
 derive and implement the N-N, D-N, and N-D cell-centered boundary rows, then
-reuse the supplied plotting helpers for those cases.
+copy and adapt the supplied D--D plotting blocks for those cases.
 
 ## Google Colab (recommended)
 

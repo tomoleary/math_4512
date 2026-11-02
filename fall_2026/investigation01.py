@@ -1,143 +1,115 @@
-"""Investigation 1 starter: a complete D-D baseline plus boundary-condition TODOs.
+"""Investigation 1: a worked D-D finite-difference example.
 
-Run this file once before editing it. It constructs the Dirichlet--Dirichlet
-(D-D) discrete Laplacian, computes its modes, overlays them with sine modes,
-and makes D-D eigenvalue/refinement plots. For Part E, reuse the plotting
-helpers after deriving and implementing the N-N, D-N, and N-D boundary rows.
+Run this file before editing it. The D-D calculation is complete. For Part E,
+derive and add the N-N, D-N, and N-D cases in the marked section below.
 """
 
 import numpy as np
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 
-from common import (dirichlet_laplacian, eigenpair_residuals, output_folder,
-                    save_figure, smallest_eigenpairs)
-
-
-def normalize_discrete(vector, mesh_width):
-    """Scale a nonzero grid vector so h sum_j v_j^2 equals one."""
-    return vector / np.sqrt(mesh_width * np.sum(vector**2))
+from common import dirichlet_laplacian, output_folder, save_figure
 
 
-def align_sign(vector, reference):
-    """Choose the sign of a numerical eigenvector to agree with a reference."""
-    if np.dot(vector, reference) < 0:
-        return -vector
-    return vector
+def cell_centered_laplacian(number_of_cells, left_boundary, right_boundary):
+    """Build the N-N, D-N, or N-D matrix after you derive its boundary rows."""
+    h = 1.0 / number_of_cells
+    x = (np.arange(number_of_cells) + 0.5) * h
+    A = np.zeros((number_of_cells, number_of_cells))
+
+    # This loop builds the usual -u'' stencil in the interior.
+    for row in range(number_of_cells):
+        A[row, row] = 2.0
+        if row > 0:
+            A[row, row - 1] = -1.0
+        if row < number_of_cells - 1:
+            A[row, row + 1] = -1.0
+
+    # TODO: Replace the first and last rows using your ghost-value derivation.
+    # Use left_boundary and right_boundary, each equal to "D" or "N".
+    # Then return x, A / h**2, h.
+    raise NotImplementedError("Add the boundary rows for N-N, D-N, and N-D")
 
 
-def dd_eigenvalue(mode, length=1.0):
-    """Continuous D-D eigenvalue for mode 1, 2, ... ."""
-    return (mode * np.pi / length)**2
+# -----------------------------------------------------------------------------
+# Complete D-D example: -u'' = lambda u on (0,1), u(0)=u(1)=0.
+# -----------------------------------------------------------------------------
 
+number_of_subintervals = 32
+x, A, h = dirichlet_laplacian(number_of_subintervals)
 
-def dd_mode(points, mode, length=1.0):
-    """L2(0,L)-normalized continuous D-D eigenfunction."""
-    return np.sqrt(2.0 / length) * np.sin(mode * np.pi * points / length)
+# A is small, so the ordinary dense symmetric eigensolver is enough here.
+eigenvalues, eigenvectors = np.linalg.eigh(A.toarray())
+number_of_modes = 6
+eigenvalues = eigenvalues[:number_of_modes]
+eigenvectors = eigenvectors[:, :number_of_modes]
 
+folder = output_folder("investigation01")
 
-def plot_mode_comparison(points, vectors, mesh_width, exact_mode, title, path,
-                         mode_indices=None):
-    """Plot up to three discrete modes against supplied continuous modes.
+# Plot the first three computed modes beside sqrt(2) sin(k pi x).
+fine_x = np.linspace(0.0, 1.0, 400)
+figure, axes = plt.subplots(1, 3, figsize=(10, 3))
+for column in range(3):
+    mode = column + 1
+    exact_at_nodes = np.sqrt(2.0) * np.sin(mode * np.pi * x)
+    computed = eigenvectors[:, column]
 
-    ``exact_mode(points, mode)`` returns the continuous mode for the requested
-    index. By default the indices are 1, 2, ...; pass ``(0, 1, 2)`` for the
-    first three N-N modes. Reuse this helper after implementing a new matrix.
-    """
-    count = min(3, vectors.shape[1])
-    if mode_indices is None:
-        mode_indices = range(1, count + 1)
-    if len(mode_indices) < count:
-        raise ValueError("Need one mode index for each displayed vector")
-    smooth_points = np.linspace(0.0, 1.0, 400)
-    figure, axes = plt.subplots(1, count, figsize=(3.5 * count, 3.1),
-                                constrained_layout=True)
-    if count == 1:
-        axes = [axes]
-    for index, axis in enumerate(axes):
-        mode = mode_indices[index]
-        reference_at_nodes = exact_mode(points, mode)
-        numerical = normalize_discrete(vectors[:, index], mesh_width)
-        numerical = align_sign(numerical, reference_at_nodes)
-        axis.plot(smooth_points, exact_mode(smooth_points, mode), "-",
-                  label="continuous")
-        axis.plot(points, numerical, "o", label="computed")
-        axis.set(xlabel="x", ylabel="normalized mode", title=f"Mode {mode}")
-        axis.grid()
-        axis.legend()
-    figure.suptitle(title)
-    save_figure(figure, path)
+    # Normalize using h sum_j v_j^2, then make the signs agree for plotting.
+    computed = computed / np.sqrt(h * np.sum(computed**2))
+    if np.dot(computed, exact_at_nodes) < 0:
+        computed = -computed
 
+    exact = np.sqrt(2.0) * np.sin(mode * np.pi * fine_x)
+    axes[column].plot(fine_x, exact, label="continuous")
+    axes[column].plot(x, computed, "o", label="computed")
+    axes[column].set_title(f"mode {mode}")
+    axes[column].set_xlabel("x")
+    axes[column].grid()
+axes[0].set_ylabel("normalized mode")
+axes[0].legend()
+figure.suptitle("D-D computed modes and sine eigenfunctions")
+save_figure(figure, folder / "dd_mode_comparison.png")
 
-def plot_eigenvalue_comparison(values, exact_values, title, path, mode_indices=None):
-    """Plot computed and continuous eigenvalues against shared mode indices."""
-    if mode_indices is None:
-        mode_indices = np.arange(1, len(values) + 1)
-    if len(mode_indices) != len(values):
-        raise ValueError("Need one mode index for each eigenvalue")
-    figure, axis = plt.subplots(figsize=(5.2, 3.4), constrained_layout=True)
-    axis.plot(mode_indices, values, "o", label="computed")
-    axis.plot(mode_indices, exact_values, "x", label="continuous")
-    axis.set(xlabel="mode", ylabel="eigenvalue", title=title)
-    axis.grid()
-    axis.legend()
-    save_figure(figure, path)
+# Compare six matrix eigenvalues with the continuous values (k pi)^2.
+modes = np.arange(1, number_of_modes + 1)
+exact_eigenvalues = (modes * np.pi)**2
+figure, axis = plt.subplots(figsize=(5, 3))
+axis.plot(modes, eigenvalues, "o", label="computed")
+axis.plot(modes, exact_eigenvalues, "x", label="continuous")
+axis.set_xlabel("mode")
+axis.set_ylabel("eigenvalue")
+axis.set_title("D-D computed and continuous eigenvalues")
+axis.grid()
+axis.legend()
+save_figure(figure, folder / "dd_eigenvalue_comparison.png")
 
+# Repeat the first two D-D eigenvalue calculations on three grids.
+rows = []
+for N in [8, 16, 32]:
+    _, refined_A, refined_h = dirichlet_laplacian(N)
+    refined_eigenvalues, _ = np.linalg.eigh(refined_A.toarray())
+    for mode in [1, 2]:
+        exact_value = (mode * np.pi)**2
+        computed_value = refined_eigenvalues[mode - 1]
+        error = abs(computed_value - exact_value)
+        rows.append([N, refined_h, mode, computed_value, error])
 
-def cell_centered_laplacian(n, left="N", right="N", length=1.0):
-    """TODO: implement the N-N, D-N, or N-D cell-centered matrix.
+table = np.array(rows)
+np.savetxt(folder / "dd_refinement.csv", table, delimiter=",",
+           header="N,h,mode,computed_eigenvalue,absolute_error", comments="")
 
-    Use ``left`` and ``right`` equal to ``"D"`` or ``"N"``. First make the
-    cell-center coordinates x_j=(j-1/2)h and the usual three-point matrix.
-    Then use your ghost-value derivation to replace the first and last rows.
-    Return ``(points, matrix, mesh_width)`` with a symmetric matrix.
-    """
-    raise NotImplementedError("Derive and implement the cell-centered boundary rows")
+figure, axis = plt.subplots(figsize=(5, 3))
+for mode in [1, 2]:
+    selected_rows = table[table[:, 2] == mode]
+    axis.loglog(selected_rows[:, 1], selected_rows[:, 4], "o-",
+                label=f"mode {mode}")
+axis.set_xlabel("h")
+axis.set_ylabel("absolute eigenvalue error")
+axis.set_title("D-D refinement study")
+axis.grid()
+axis.legend()
+save_figure(figure, folder / "dd_refinement.png")
 
-
-def run_dd_baseline(number_of_subintervals=32, length=1.0):
-    """Run the complete D-D computation supplied with Investigation 1."""
-    points, matrix, mesh_width = dirichlet_laplacian(number_of_subintervals, length)
-    mode_count = min(6, matrix.shape[0])
-    values, vectors = smallest_eigenpairs(matrix, mode_count)
-    exact_values = np.array([dd_eigenvalue(mode, length)
-                             for mode in range(1, mode_count + 1)])
-    folder = output_folder("investigation01")
-
-    plot_mode_comparison(points, vectors[:, :3], mesh_width,
-                         lambda x, mode: dd_mode(x, mode, length),
-                         "D-D computed modes and sine eigenfunctions",
-                         folder / "dd_mode_comparison.png")
-    plot_eigenvalue_comparison(values, exact_values,
-                               "D-D computed and continuous eigenvalues",
-                               folder / "dd_eigenvalue_comparison.png")
-
-    grid_sizes = np.array([8, 16, 32])
-    rows = []
-    for n in grid_sizes:
-        _, refined_matrix, h = dirichlet_laplacian(n, length)
-        refined_values, _ = smallest_eigenpairs(refined_matrix, 2)
-        for mode in (1, 2):
-            error = abs(refined_values[mode - 1] - dd_eigenvalue(mode, length))
-            rows.append((n, h, mode, refined_values[mode - 1], error))
-    table = np.asarray(rows)
-    np.savetxt(folder / "dd_refinement.csv", table, delimiter=",",
-               header="N,h,mode,computed_eigenvalue,absolute_error", comments="")
-
-    figure, axis = plt.subplots(figsize=(5.2, 3.4), constrained_layout=True)
-    for mode in (1, 2):
-        selected = table[table[:, 2] == mode]
-        axis.loglog(selected[:, 1], selected[:, 4], "o-", label=f"mode {mode}")
-    axis.set(xlabel="h", ylabel="absolute eigenvalue error",
-             title="D-D refinement study")
-    axis.grid()
-    axis.legend()
-    save_figure(figure, folder / "dd_refinement.png")
-
-    residuals = eigenpair_residuals(matrix, values, vectors)
-    print("Maximum relative eigenpair residual:", residuals.max())
-    print("D-D files written to:", folder)
-    return points, matrix, values, vectors
-
-
-if __name__ == "__main__":
-    run_dd_baseline()
+# Check that A v is very close to lambda v for the computed eigenpairs.
+residual = A @ eigenvectors - eigenvectors * eigenvalues
+print("Largest residual:", np.max(np.abs(residual)))
+print("D-D files written to:", folder)
