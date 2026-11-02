@@ -1,12 +1,38 @@
-# Fall 2026
+# MATH 4512: Fall 2026
 
-The validated project starter notebooks are in [project_2026](../project_2026/README.md). Assignment instructions are on Carmen.
+This folder contains the starter materials for **Project Investigation 1**:
+discrete Laplacians, boundary conditions, and spectral convergence. The
+mathematical tasks and submission requirements are in the project handout on
+Carmen.
 
-## Run in Google Colab
+## Start here
 
-1. Open a notebook (`.ipynb`) on GitHub.
-2. Replace `github.com` with [githubtocolab.com](https://githubtocolab.com) in its URL.
-3. Sign in to Google and save a copy to Drive before editing.
-4. Run the cells in order.
+If you are new to Python, begin with `python_primer.ipynb`. Then open
+`investigation01.ipynb`. The accompanying files `common.py` and
+`investigation01.py` are part of the starter; keep them in this folder.
 
-No local software installation is needed. The shortcut works on notebook pages, not this README.
+## Google Colab (recommended)
+
+Open either notebook on GitHub and choose **Open in Colab**, or replace
+`github.com` with [githubtocolab.com](https://githubtocolab.com) in that
+notebook's URL. Sign in with a Google account before running or saving work.
+Run the setup cell first, then run cells in order. The notebook works on a
+copy in your Google Drive and does not access the instructor's private course
+repository.
+
+After completing your work, use the browser print command to save a PDF that
+shows the relevant code and output, as directed in the handout.
+
+## Local use
+
+Local installation is optional. With Python 3.10 or newer, install the listed
+dependencies and run the starter from this directory:
+
+```sh
+python3 -m pip install -r requirements.txt
+python3 investigation01.py
+```
+
+The starter provides infrastructure, not a completed submission. In
+particular, derive the required finite-difference boundary rows and explain
+your mathematical and computational results in your own words.
